@@ -1,3 +1,4 @@
+
 import polars as pl
 import numpy as np
 import streamlit as st
@@ -10,8 +11,6 @@ import streamlit as st
 # 5. # Suma Total: La puntuación final es la suma de los 13 resultados individuales ($0 - 100$ puntos).
 # Mostrar info básica
 st.write("Vista previa:")
-
-
 
 
 #%%
