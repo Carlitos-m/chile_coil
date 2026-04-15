@@ -9,7 +9,7 @@ import streamlit as st
 # 4. Calculo de componenetes: Aplicar las formulas de puntuacion (funciones) a los 13 componentes
 # 5. # Suma Total: La puntuación final es la suma de los 13 resultados individuales ($0 - 100$ puntos).
 # Mostrar info básica
-st.write("Vista previa:")
+st.title("Vista previa:")
 
 
 #%%
