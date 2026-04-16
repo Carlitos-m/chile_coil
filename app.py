@@ -23,12 +23,36 @@ cols = st.columns(3)
 
 # Iteramos sobre la lista y asignamos cada botón a una columna
 for i, grupo in enumerate(grupos):
+    nombre_limpio = grupo.strip()
     # Usamos el operador módulo (%) para ciclar entre las 3 columnas
     with cols[i % 3]:
-        if st.button(grupo.strip(), use_container_width=True):
-            st.success(f"Has seleccionado: **{grupo.strip()}**")
-            # Aquí podrías agregar la lógica para mostrar una tabla o gráfico
-            st.info(f"Cargando información nutricional para {grupo.strip()}...")
+        if st.button(nombre_limpio,use_container_width=True):
+            st.session_state.grupo_seleccionado = nombre_limpio
+
+if st.session_state.grupo_seleccionado:
+    st.divider()
+    seleccion = st.session_state.grupo_seleccionado
+
+    st.subheader(f"Sección: {seleccion}")
+
+    # Ejemplo específico para Frutas
+    if seleccion == 'FRUTAS ENTERAS':
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            cantidad = st.number_input("Ingresa la cantidad consumida (gramos/unidades):", min_value=0.0, step=1.0)
+        with col2:
+            st.write("") # Espaciador
+            st.write("")
+            if st.button("Guardar Registro"):
+                st.success(f"Registrado: {cantidad} de {seleccion}")
+    else:
+        st.info(f"Formulario para {seleccion} en desarrollo...")
+        if st.button("Cerrar"):
+            st.session_state.grupo_seleccionado = None
+            st.rerun()
+
+
+
 
 # Sidebar opcional para filtros adicionales
 with st.sidebar:
