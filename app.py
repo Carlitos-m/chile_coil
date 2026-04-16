@@ -66,14 +66,31 @@ def extraer_alimentos_por_grupo(df: pl.DataFrame, grupo: str) -> List[str]:
     Extrae la lista de alimentos únicos de un grupo,
     eliminando duplicados y ordenando alfabéticamente
     """
-    alimentos = (df
-                 .filter(pl.col('Grupo de alimento').str.strip_chars().str.strip() == grupo.strip())
-                 .select('Alimento')
-                 .unique()
-                 .sort('Alimento')
-                 .to_series()
-                 .to_list())
-    return alimentos
+    try:
+        alimentos = (df
+                    .filter(pl.col('Grupo de alimento').str.strip_chars().str.strip() == grupo.strip())
+                    .select('Alimento')
+                    .unique()
+                    .sort('Alimento')
+                    .to_series()
+                    .to_list())
+        return alimentos
+    except Exception as e:
+        columnas = df.columns
+        col_grupo = [c for c in columnas if 'Grupo' in c or 'grupo' in c.lower()]
+        if col_grupo:
+            col_grupo = col_grupo[0]
+            alimentos = (df
+                         .filter(pl.col(col_grupo).str.strip_chars().str.strip() == grupo)
+                         .select('Alimento')
+                         .unique()
+                         .sort('Alimento')
+                         .to_series()
+                         .to_list())
+            return alimentos
+        else:
+            st.error(f"Columnas disponibles:{columnas}")
+            return []
 
 
 # ============================================
@@ -245,7 +262,7 @@ if df_nutricional is None:
 # INTERFAZ PRINCIPAL
 # ============================================
 
-st.title("🍎 App Nutricional - Análisis de Dieta")
+st.title(" App Nutricional - Análisis de Dieta")
 
 # Inicializar session state
 if 'records' not in st.session_state:
@@ -403,7 +420,7 @@ with st.sidebar:
     st.header("⚙️ Utilidades")
 
     st.subheader("Conversor gramos → tazas")
-    gram_conv = st.number_input("Gramos:", min_value=0.0, value=0.0)
+    gram_conv = st.number_input("Gramos:", min_value=0.0, step=10.0,value=0.0)
     if gram_conv > 0:
         st.info(f"**{gramos_a_tazas(gram_conv):.2f} tazas**")
 
