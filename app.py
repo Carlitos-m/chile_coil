@@ -34,64 +34,80 @@ def limpiar_dataframe(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
+def extraer_alimentos_por_grupo(df: pl.DataFrame, grupo: str) -> List[str]:
+    """
+    Extrae la lista de alimentos únicos de un grupo.
+    Maneja posibles espacios en nombres de columna y valores.
+    """
+    # Normalizar nombres de columnas: quitar espacios al inicio/final
+    df = df.rename({col: col.strip() for col in df.columns})
+
+    # Buscar columna que contenga 'Grupo' (por si acaso)
+    col_grupo = next((c for c in df.columns if 'grupo' in c.lower()), None)
+    if col_grupo is None:
+        st.error("No se encontró columna de grupo en los datos")
+        return []
+
+    # Asegurar que la columna sea string y limpiar
+    try:
+        alimentos = (df
+                     .with_columns(pl.col(col_grupo).cast(pl.Utf8).str.strip_chars().alias('grupo_clean'))
+                     .filter(pl.col('grupo_clean') == grupo.strip())
+                     .select('Alimento')
+                     .unique()
+                     .sort('Alimento')
+                     .to_series()
+                     .to_list())
+        return alimentos
+    except Exception as e:
+        # Fallback: usar contains por si hay diferencias de espacios
+        st.warning(f"Usando búsqueda flexible para '{grupo}'")
+        alimentos = (df
+                     .filter(pl.col(col_grupo).cast(pl.Utf8).str.to_lowercase().str.contains(grupo.strip().lower()))
+                     .select('Alimento')
+                     .unique()
+                     .sort('Alimento')
+                     .to_series()
+                     .to_list())
+        return alimentos
+
+
 def obtener_alimento_completo(df: pl.DataFrame, alimento: str) -> pl.DataFrame:
     """
     Obtiene la fila más completa para un alimento dado.
     Si hay múltiples filas, elige la que tenga más valores no nulos.
     """
-    df_filtrado = df.filter(pl.col('Alimento') == alimento)
+    # Normalizar nombres de columnas
+    df = df.rename({col: col.strip() for col in df.columns})
+
+    # Asegurar que Alimento sea string limpio
+    df = df.with_columns(pl.col('Alimento').cast(pl.Utf8).str.strip_chars().alias('Alimento_clean'))
+
+    df_filtrado = df.filter(pl.col('Alimento_clean') == alimento.strip())
 
     if df_filtrado.height == 0:
-        return df_filtrado
+        # Intentar búsqueda flexible
+        df_filtrado = df.filter(pl.col('Alimento_clean').str.contains(alimento.strip()))
+        if df_filtrado.height == 0:
+            return df_filtrado
 
     if df_filtrado.height == 1:
-        return df_filtrado
+        return df_filtrado.drop('Alimento_clean')
 
-    # Si hay múltiples filas, elegir la más completa
+    # Columnas a verificar para completitud
     columnas_a_verificar = ['KCAL', 'PROT', 'MUFA', 'PUFA', 'SAT', 'SODIO', 'AZUCAR AÑADIDA']
+    columnas_existentes = [c for c in columnas_a_verificar if c in df_filtrado.columns]
 
-    df_filtrado = df_filtrado.with_columns(
-        pl.sum_horizontal([
-            pl.col(c).is_not_null().cast(pl.Int32)
-            for c in columnas_a_verificar if c in df_filtrado.columns
-        ]).alias('_completitud')
-    )
+    if columnas_existentes:
+        # Contar valores no nulos (considerando también ceros como válidos si no son nulos)
+        df_filtrado = df_filtrado.with_columns(
+            pl.sum_horizontal([
+                pl.col(c).is_not_null().cast(pl.Int32) for c in columnas_existentes
+            ]).alias('_completitud')
+        )
+        df_filtrado = df_filtrado.sort('_completitud', descending=True).head(1)
 
-    # Ordenar por completitud y tomar la primera
-    return df_filtrado.sort('_completitud', descending=True).head(1)
-
-
-def extraer_alimentos_por_grupo(df: pl.DataFrame, grupo: str) -> List[str]:
-    """
-    Extrae la lista de alimentos únicos de un grupo,
-    eliminando duplicados y ordenando alfabéticamente
-    """
-    try:
-        alimentos = (df
-                    .filter(pl.col('Grupo de alimento').str.strip_chars().str.strip() == grupo.strip())
-                    .select('Alimento')
-                    .unique()
-                    .sort('Alimento')
-                    .to_series()
-                    .to_list())
-        return alimentos
-    except Exception as e:
-        columnas = df.columns
-        col_grupo = [c for c in columnas if 'Grupo' in c or 'grupo' in c.lower()]
-        if col_grupo:
-            col_grupo = col_grupo[0]
-            alimentos = (df
-                         .filter(pl.col(col_grupo).str.strip_chars().str.strip() == grupo.strip())
-                         .select('Alimento')
-                         .unique()
-                         .sort('Alimento')
-                         .to_series()
-                         .to_list())
-            return alimentos
-        else:
-            st.error(f"Columnas disponibles:{columnas}")
-            return []
-
+    return df_filtrado.drop(['Alimento_clean', '_completitud'], strict=False)
 
 # ============================================
 # FUNCIONES DE CÁLCULO NUTRICIONAL
