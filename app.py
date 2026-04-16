@@ -67,7 +67,7 @@ def extraer_alimentos_por_grupo(df: pl.DataFrame, grupo: str) -> List[str]:
     eliminando duplicados y ordenando alfabéticamente
     """
     alimentos = (df
-                 .filter(pl.col('Grupo de alimento').str.strip() == grupo)
+                 .filter(pl.col('Grupo de alimento').str.strip_chars().str.strip() == grupo.strip())
                  .select('Alimento')
                  .unique()
                  .sort('Alimento')
