@@ -81,7 +81,7 @@ def extraer_alimentos_por_grupo(df: pl.DataFrame, grupo: str) -> List[str]:
         if col_grupo:
             col_grupo = col_grupo[0]
             alimentos = (df
-                         .filter(pl.col(col_grupo).str.strip_chars().str.strip() == grupo)
+                         .filter(pl.col(col_grupo).str.strip_chars().str.strip() == grupo.strip())
                          .select('Alimento')
                          .unique()
                          .sort('Alimento')
